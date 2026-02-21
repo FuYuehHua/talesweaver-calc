@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+        input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .result-box { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 4px; }
+        .total-price { color: #2c3e50; font-size: 1.1em; }
+        .om-price { color: #d93025; font-size: 1.5em; font-weight: bold; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>💰 天翼之鍊換算器</h2>
+    
+    <div class="input-group">
+        <label>SEED 單價</label>
+        <input type="number" id="price" placeholder="例如: 30000000" oninput="calculate()">
+    </div>
+    
+    <div class="input-group">
+        <label>數量</label>
+        <input type="number" id="amount" placeholder="例如: 334" oninput="calculate()">
+    </div>
+
+    <div class="result-box">
+        <div class="total-price">總價 (SEED): <span id="totalSeed">0</span></div>
+        <div class="total-price" style="font-size: 0.9em; color: #666;">(對應你圖片中的 U2 欄位)</div>
+        <hr>
+        <div style="font-weight: bold;">換算 OM 價格 (V 欄位):</div>
+        <div class="om-price" id="resultOM">0</div>
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        const price = document.getElementById('price').value || 0;
+        const amount = document.getElementById('amount').value || 0;
+        
+        // 總價 = 單價 * 數量
+        const total = price * amount;
+        document.getElementById('totalSeed').innerText = total.toLocaleString();
+        
+        // 換算價格 = 總價 / 12,500,000 * 5
+        const omResult = (total / 12500000) * 5;
+        
+        // 顯示結果，保留四捨五入到整數（如你圖片所示）
+        document.getElementById('resultOM').innerText = Math.round(omResult).toLocaleString();
+    }
+</script>
+
+</body>
+</html>
+
+<button onclick="copyResult()" style="margin-top:10px; cursor:pointer; padding:5px 10px;">📋 複製結果</button>
+
+<script>
+function copyResult() {
+    const text = document.getElementById('resultOM').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('已複製金額: ' + text);
+    });
+}
+</script>
