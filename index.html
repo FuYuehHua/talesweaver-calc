@@ -14,11 +14,15 @@
         input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
         input:focus { border-color: #1a73e8; outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
         .result-box { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #1a73e8; }
-        .total-price { color: #2c3e50; font-size: 1.05em; margin-bottom: 5px; }
-        .om-title { font-weight: bold; color: #333; margin-top: 10px; font-size: 1em; }
-        .om-price { color: #d93025; font-size: 1.8em; font-weight: bold; margin-top: 5px; margin-bottom: 10px; }
-        .copy-btn { background-color: #1a73e8; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; font-size: 0.95em; transition: background 0.2s; }
+        .total-price { color: #2c3e50; font-size: 1.05em; font-weight: 500; }
+        .result-title { font-weight: bold; color: #333; margin-top: 10px; font-size: 0.95em; }
+        .om-price { color: #d93025; font-size: 1.8em; font-weight: bold; margin: 3px 0 10px 0; }
+        .twd-price { color: #137333; font-size: 1.5em; font-weight: bold; margin: 3px 0 12px 0; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        .copy-btn { background-color: #1a73e8; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em; flex: 1; transition: background 0.2s; }
         .copy-btn:hover { background-color: #1557b0; }
+        .copy-btn.secondary { background-color: #34a853; }
+        .copy-btn.secondary:hover { background-color: #2d8e47; }
     </style>
 </head>
 <body>
@@ -29,7 +33,7 @@
     
     <div class="input-group">
         <label>SEED 單價</label>
-        <input type="number" id="price" placeholder="例如: 30000000" oninput="calculate()">
+        <input type="number" id="price" placeholder="例如: 2500000000" oninput="calculate()">
     </div>
     
     <div class="input-group">
@@ -39,40 +43,48 @@
 
     <div class="result-box">
         <div class="total-price">總價 (SEED): <span id="totalSeed">0</span></div>
-        <div class="total-price" style="font-size: 0.85em; color: #666;">(對應試算表中的 U 欄位)</div>
         <hr style="border: 0; border-top: 1px solid #ced4da; margin: 12px 0;">
-        <div class="om-title">換算 OM 價格 (V 欄位):</div>
+        
+        <div class="result-title">換算 OM 價格:</div>
         <div class="om-price" id="resultOM">0</div>
-        <button class="copy-btn" onclick="copyResult()">📋 複製 OM 價格</button>
+
+        <div class="result-title">換算約當台幣 (TWD):</div>
+        <div class="twd-price" id="resultTWD">0 元</div>
+        
+        <div class="btn-group">
+            <button class="copy-btn" onclick="copyValue('resultOM', 'OM 價格')">📋 複製 OM</button>
+            <button class="copy-btn secondary" onclick="copyValue('resultTWD', '台幣金額')">📋 複製台幣</button>
+        </div>
     </div>
 </div>
 
 <script>
     function calculate() {
-        const price = document.getElementById('price').value || 0;
-        const amount = document.getElementById('amount').value || 0;
+        const price = Number(document.getElementById('price').value) || 0;
+        const amount = Number(document.getElementById('amount').value) || 0;
         
-        // 總價 = 單價 * 數量
         const total = price * amount;
         document.getElementById('totalSeed').innerText = total.toLocaleString();
         
-        // 新公式：換算價格 = 總價 / 20,000,000 * 5
-        const omResult = (total / 20000000) * 5;
+        // 換算基準：20,000,000 SEED = 1 台幣
+        const twdResult = total / 20000000;
+        // OM 價格 = (總價 / 20,000,000) * 5
+        const omResult = twdResult * 5;
         
-        // 四捨五入到整數顯示
         document.getElementById('resultOM').innerText = Math.round(omResult).toLocaleString();
+        document.getElementById('resultTWD').innerText = (twdResult % 1 === 0 ? twdResult.toLocaleString() : twdResult.toFixed(1).toLocaleString()) + " 元";
     }
 
-    function copyResult() {
-        const text = document.getElementById('resultOM').innerText;
-        if (text === "0") {
+    function copyValue(elementId, labelName) {
+        const text = document.getElementById(elementId).innerText.replace(/[^0-9.]/g, '');
+        if (!text || text === "0") {
             alert('目前金額為 0，請先輸入單價與數量！');
             return;
         }
-        navigator.clipboard.writeText(text.replace(/,/g, '')).then(() => {
-            alert('已成功複製 OM 價格: ' + text);
-        }).catch(err => {
-            alert('複製失敗，請手動選取複製。');
+        navigator.clipboard.writeText(text).then(() => {
+            alert('已成功複製 ' + labelName + ': ' + text);
+        }).catch(() => {
+            alert('複製失敗，請手動選取。');
         });
     }
 </script>
