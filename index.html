@@ -3,93 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天翼之鍊幣值換算器</title>
+    <title>天翼之鍊雙向幣值換算器</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background-color: #f4f4f9; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 420px; margin: 0 auto; }
-        h2 { margin-top: 0; color: #333; font-size: 1.5em; display: flex; align-items: center; gap: 8px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); max-width: 440px; margin: 0 auto; }
+        h2 { margin-top: 0; color: #333; font-size: 1.45em; display: flex; align-items: center; gap: 8px; }
         .note-badge { background-color: #fff2cc; color: #b78103; font-size: 0.85em; padding: 4px 8px; border-radius: 4px; font-weight: bold; margin-bottom: 15px; display: inline-block; border: 1px solid #ffe599; }
-        .input-group { margin-bottom: 18px; }
+        
+        /* 分頁切換按鈕 */
+        .tab-group { display: flex; gap: 6px; margin-bottom: 18px; background: #eee; padding: 4px; border-radius: 8px; }
+        .tab-btn { flex: 1; padding: 8px; border: none; background: transparent; cursor: pointer; border-radius: 6px; font-weight: bold; color: #666; font-size: 0.9em; transition: 0.2s; }
+        .tab-btn.active { background: white; color: #1a73e8; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        .input-group { margin-bottom: 16px; }
         label { display: block; margin-bottom: 6px; font-weight: bold; color: #444; font-size: 0.95em; }
         input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 1em; }
         input:focus { border-color: #1a73e8; outline: none; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
         .hint { font-size: 0.8em; color: #888; margin-top: 4px; }
+
         .result-box { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #1a73e8; }
-        .total-price { color: #2c3e50; font-size: 1.05em; font-weight: 500; }
-        .result-title { font-weight: bold; color: #333; margin-top: 10px; font-size: 0.95em; }
-        .om-price { color: #d93025; font-size: 1.8em; font-weight: bold; margin: 3px 0 10px 0; }
-        .twd-price { color: #137333; font-size: 1.5em; font-weight: bold; margin: 3px 0 12px 0; }
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        .result-item { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        .result-label { font-weight: bold; color: #333; font-size: 0.95em; }
+        .result-val { font-size: 1.25em; font-weight: bold; color: #2c3e50; }
+        .om-color { color: #d93025; font-size: 1.5em; }
+        .twd-color { color: #137333; font-size: 1.3em; }
+        .seed-color { color: #b78103; font-size: 1.2em; }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 12px; }
         .copy-btn { background-color: #1a73e8; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em; flex: 1; transition: background 0.2s; }
         .copy-btn:hover { background-color: #1557b0; }
-        .copy-btn.secondary { background-color: #34a853; }
-        .copy-btn.secondary:hover { background-color: #2d8e47; }
+        .copy-btn.green { background-color: #34a853; }
+        .copy-btn.green:hover { background-color: #2d8e47; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>💰 天翼之鍊幣值換算器</h2>
-    <div class="note-badge">📌 目前比例 1 : 2000萬</div>
-    
-    <div class="input-group">
-        <label>SEED 單價（單位：億）</label>
-        <input type="number" id="priceYi" step="any" placeholder="例如：25 (代表25億) 或 0.3 (代表3千萬)" oninput="calculate()">
-        <div class="hint">💡 可輸入小數，例如 1.5 代表 1 億 5,000 萬</div>
-    </div>
-    
-    <div class="input-group">
-        <label>數量</label>
-        <input type="number" id="amount" placeholder="例如: 1 或 334" oninput="calculate()">
+    <div class="note-badge">📌 目前比例 1 : 2000萬 (1 TWD = 5 OM)</div>
+
+    <!-- 模式切換 -->
+    <div class="tab-group">
+        <button class="tab-btn active" id="tab1" onclick="switchTab(1)">模式 A：SEED 換算 OM</button>
+        <button class="tab-btn" id="tab2" onclick="switchTab(2)">模式 B：OM 反推 SEED</button>
     </div>
 
-    <div class="result-box">
-        <div class="total-price">總價 (SEED): <span id="totalSeed">0</span></div>
-        <hr style="border: 0; border-top: 1px solid #ced4da; margin: 12px 0;">
-        
-        <div class="result-title">換算 OM 價格:</div>
-        <div class="om-price" id="resultOM">0</div>
+    <!-- 模式 A：正向（SEED -> OM） -->
+    <div id="modeA">
+        <div class="input-group">
+            <label>SEED 單價（單位：億）</label>
+            <input type="number" id="priceYi" step="any" placeholder="例如：25 (代表25億) 或 0.3 (代表3千萬)" oninput="calcA()">
+            <div class="hint">💡 支援小數點（如 1.5 = 1 億 5,000 萬）</div>
+        </div>
+        <div class="input-group">
+            <label>數量</label>
+            <input type="number" id="amountA" placeholder="例如: 1 或 334" oninput="calcA()">
+        </div>
 
-        <div class="result-title">換算約當台幣 (TWD):</div>
-        <div class="twd-price" id="resultTWD">0 元</div>
-        
-        <div class="btn-group">
-            <button class="copy-btn" onclick="copyValue('resultOM', 'OM 價格')">📋 複製 OM</button>
-            <button class="copy-btn secondary" onclick="copyValue('resultTWD', '台幣金額')">📋 複製台幣</button>
+        <div class="result-box">
+            <div class="result-item">
+                <span class="result-label">總價 (SEED):</span>
+                <span class="result-val" id="totalSeedA">0</span>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #ced4da; margin: 10px 0;">
+            <div class="result-item">
+                <span class="result-label">換算 OM 價格:</span>
+                <span class="result-val om-color" id="resOMA">0</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">換算約當台幣:</span>
+                <span class="result-val twd-color" id="resTWDA">0 元</span>
+            </div>
+            <div class="btn-group">
+                <button class="copy-btn" onclick="copyNum('resOMA', 'OM 價格')">📋 複製 OM</button>
+                <button class="copy-btn green" onclick="copyNum('resTWDA', '台幣金額')">📋 複製台幣</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模式 B：反向（OM -> SEED） -->
+    <div id="modeB" style="display: none;">
+        <div class="input-group">
+            <label>OM 總價</label>
+            <input type="number" id="totalOMInput" placeholder="例如: 4008" oninput="calcB()">
+        </div>
+        <div class="input-group">
+            <label>數量</label>
+            <input type="number" id="amountB" placeholder="例如: 334 (若只買單件請填 1)" oninput="calcB()">
+        </div>
+
+        <div class="result-box">
+            <div class="result-item">
+                <span class="result-label">平均單價 (OM):</span>
+                <span class="result-val om-color" id="unitOMB">0</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">換算單件 SEED:</span>
+                <span class="result-val seed-color" id="unitSeedB">0 億</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">換算單件台幣:</span>
+                <span class="result-val twd-color" id="unitTWDB">0 元</span>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #ced4da; margin: 10px 0;">
+            <div class="result-item">
+                <span class="result-label">整包總約當台幣:</span>
+                <span class="result-val twd-color" id="totalTWDB">0 元</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">整包總 SEED:</span>
+                <span class="result-val" id="totalSeedB">0</span>
+            </div>
+            <div class="btn-group">
+                <button class="copy-btn" onclick="copyNum('unitOMB', '平均單價 OM')">📋 複製單價 OM</button>
+                <button class="copy-btn green" onclick="copyNum('unitSeedB', '單件 SEED')">📋 複製單件 SEED</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    function calculate() {
-        const priceYi = parseFloat(document.getElementById('priceYi').value) || 0;
-        const amount = parseFloat(document.getElementById('amount').value) || 0;
-        
-        // 1 億 = 100,000,000 SEED
-        const actualPrice = priceYi * 100000000;
-        const total = actualPrice * amount;
-        
-        document.getElementById('totalSeed').innerText = total.toLocaleString();
-        
-        // 換算基準：20,000,000 SEED = 1 台幣
-        const twdResult = total / 20000000;
-        // OM 價格 = (總價 / 20,000,000) * 5
-        const omResult = twdResult * 5;
-        
-        document.getElementById('resultOM').innerText = Math.round(omResult).toLocaleString();
-        document.getElementById('resultTWD').innerText = (twdResult % 1 === 0 ? twdResult.toLocaleString() : twdResult.toFixed(1).toLocaleString()) + " 元";
+    function switchTab(mode) {
+        document.getElementById('tab1').classList.toggle('active', mode === 1);
+        document.getElementById('tab2').classList.toggle('active', mode === 2);
+        document.getElementById('modeA').style.display = mode === 1 ? 'block' : 'none';
+        document.getElementById('modeB').style.display = mode === 2 ? 'block' : 'none';
     }
 
-    function copyValue(elementId, labelName) {
-        const text = document.getElementById(elementId).innerText.replace(/[^0-9.]/g, '');
+    // 模式 A（原功能）
+    function calcA() {
+        const priceYi = parseFloat(document.getElementById('priceYi').value) || 0;
+        const amount = parseFloat(document.getElementById('amountA').value) || 0;
+        const total = priceYi * 100000000 * amount;
+        
+        document.getElementById('totalSeedA').innerText = total.toLocaleString();
+        const twd = total / 20000000;
+        const om = twd * 5;
+        
+        document.getElementById('resOMA').innerText = Math.round(om).toLocaleString();
+        document.getElementById('resTWDA').innerText = (twd % 1 === 0 ? twd.toLocaleString() : twd.toFixed(1).toLocaleString()) + " 元";
+    }
+
+    // 模式 B（反推功能）
+    function calcB() {
+        const totalOM = parseFloat(document.getElementById('totalOMInput').value) || 0;
+        const amount = parseFloat(document.getElementById('amountB').value) || 0;
+        
+        if (amount <= 0 || totalOM <= 0) {
+            document.getElementById('unitOMB').innerText = "0";
+            document.getElementById('unitSeedB').innerText = "0 億";
+            document.getElementById('unitTWDB').innerText = "0 元";
+            document.getElementById('totalTWDB').innerText = "0 元";
+            document.getElementById('totalSeedB').innerText = "0";
+            return;
+        }
+
+        // 1. 平均單價 OM
+        const unitOM = totalOM / amount;
+        // 2. 台幣換算 (5 OM = 1 TWD)
+        const totalTWD = totalOM / 5;
+        const unitTWD = totalTWD / amount;
+        // 3. SEED 換算 (1 TWD = 20,000,000 SEED)
+        const totalSeed = totalTWD * 20000000;
+        const unitSeedYi = (totalSeed / amount) / 100000000; // 轉成億
+
+        document.getElementById('unitOMB').innerText = (unitOM % 1 === 0 ? unitOM.toLocaleString() : unitOM.toFixed(2).toLocaleString());
+        document.getElementById('unitSeedB').innerText = (unitSeedYi >= 0.01 ? unitSeedYi.toFixed(3) : unitSeedYi.toFixed(4)) + " 億";
+        document.getElementById('unitTWDB').innerText = (unitTWD % 1 === 0 ? unitTWD.toLocaleString() : unitTWD.toFixed(1).toLocaleString()) + " 元";
+        document.getElementById('totalTWDB').innerText = (totalTWD % 1 === 0 ? totalTWD.toLocaleString() : totalTWD.toFixed(1).toLocaleString()) + " 元";
+        document.getElementById('totalSeedB').innerText = totalSeed.toLocaleString();
+    }
+
+    function copyNum(id, name) {
+        const text = document.getElementById(id).innerText.replace(/[^0-9.]/g, '');
         if (!text || text === "0") {
-            alert('目前金額為 0，請先輸入單價與數量！');
+            alert('目前數值為 0！');
             return;
         }
         navigator.clipboard.writeText(text).then(() => {
-            alert('已成功複製 ' + labelName + ': ' + text);
+            alert('已成功複製 ' + name + ': ' + text);
         }).catch(() => {
-            alert('複製失敗，請手動選取。');
+            alert('複製失敗，請手動複製。');
         });
     }
 </script>
