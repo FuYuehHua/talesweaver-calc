@@ -24,10 +24,10 @@
         .result-box { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #1a73e8; }
         .result-item { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
         .result-label { font-weight: bold; color: #333; font-size: 0.95em; }
-        .result-val { font-size: 1.25em; font-weight: bold; color: #2c3e50; }
+        .result-val { font-size: 1.25em; font-weight: bold; color: #2c3e50; text-align: right; }
         .om-color { color: #d93025; font-size: 1.5em; }
         .twd-color { color: #137333; font-size: 1.3em; }
-        .seed-color { color: #b78103; font-size: 1.2em; }
+        .seed-color { color: #b78103; font-size: 1.25em; }
 
         .btn-group { display: flex; gap: 8px; margin-top: 12px; }
         .copy-btn { background-color: #1a73e8; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.9em; flex: 1; transition: background 0.2s; }
@@ -63,7 +63,7 @@
         <div class="result-box">
             <div class="result-item">
                 <span class="result-label">總價 (SEED):</span>
-                <span class="result-val" id="totalSeedA">0</span>
+                <span class="result-val seed-color" id="totalSeedA">0</span>
             </div>
             <hr style="border: 0; border-top: 1px solid #ced4da; margin: 10px 0;">
             <div class="result-item">
@@ -85,11 +85,11 @@
     <div id="modeB" style="display: none;">
         <div class="input-group">
             <label>OM 總價</label>
-            <input type="number" id="totalOMInput" placeholder="例如: 4008" oninput="calcB()">
+            <input type="number" id="totalOMInput" placeholder="例如: 1200" oninput="calcB()">
         </div>
         <div class="input-group">
             <label>數量</label>
-            <input type="number" id="amountB" placeholder="例如: 334 (若只買單件請填 1)" oninput="calcB()">
+            <input type="number" id="amountB" placeholder="例如: 999 (若只買單件請填 1)" oninput="calcB()">
         </div>
 
         <div class="result-box">
@@ -99,7 +99,7 @@
             </div>
             <div class="result-item">
                 <span class="result-label">換算單件 SEED:</span>
-                <span class="result-val seed-color" id="unitSeedB">0 億</span>
+                <span class="result-val seed-color" id="unitSeedB">0</span>
             </div>
             <div class="result-item">
                 <span class="result-label">換算單件台幣:</span>
@@ -107,22 +107,24 @@
             </div>
             <hr style="border: 0; border-top: 1px solid #ced4da; margin: 10px 0;">
             <div class="result-item">
-                <span class="result-label">整包總約當台幣:</span>
+                <span class="result-label">整包約當台幣:</span>
                 <span class="result-val twd-color" id="totalTWDB">0 元</span>
             </div>
             <div class="result-item">
                 <span class="result-label">整包總 SEED:</span>
-                <span class="result-val" id="totalSeedB">0</span>
+                <span class="result-val seed-color" id="totalSeedB">0</span>
             </div>
             <div class="btn-group">
                 <button class="copy-btn" onclick="copyNum('unitOMB', '平均單價 OM')">📋 複製單價 OM</button>
-                <button class="copy-btn green" onclick="copyNum('unitSeedB', '單件 SEED')">📋 複製單件 SEED</button>
+                <button class="copy-btn green" onclick="copyRawSeed()">📋 複製整包 SEED 數字</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+    let rawTotalSeedB = 0; // 存放精確數字供複製
+
     function switchTab(mode) {
         document.getElementById('tab1').classList.toggle('active', mode === 1);
         document.getElementById('tab2').classList.toggle('active', mode === 2);
@@ -130,13 +132,52 @@
         document.getElementById('modeB').style.display = mode === 2 ? 'block' : 'none';
     }
 
-    // 模式 A（原功能）
+    // 中文單位簡化邏輯：優先以「億」與「千萬」為主要呈現
+    function formatChineseSeed(num) {
+        if (!num || num === 0) return "0";
+        num = Math.round(num); // 四捨五入到整數
+        
+        const YI = 100000000;
+        const WAN = 10000;
+
+        if (num >= YI) {
+            let yi = Math.floor(num / YI);
+            let rest = num % YI;
+            // 取到千萬位數（1000萬 = 1000 * 10000）
+            let qianwan = Math.floor(rest / 10000000);
+            
+            if (qianwan > 0) {
+                return `${yi} 億 ${qianwan} 千萬`;
+            } else {
+                // 如果沒有到千萬，但有幾百萬零頭
+                let restWan = Math.floor(rest / WAN);
+                if (restWan > 0) {
+                    return `${yi} 億 ${restWan} 萬`;
+                }
+                return `${yi} 億`;
+            }
+        } else if (num >= 10000000) {
+            // 不滿 1 億，但有千萬
+            let qianwan = Math.floor(num / 10000000);
+            let restWan = Math.floor((num % 10000000) / WAN);
+            if (restWan > 0) {
+                return `${qianwan * 1000 + restWan} 萬`;
+            }
+            return `${qianwan} 千萬`;
+        } else if (num >= WAN) {
+            let wan = Math.floor(num / WAN);
+            return `${wan} 萬`;
+        }
+        return num.toLocaleString();
+    }
+
+    // 模式 A
     function calcA() {
         const priceYi = parseFloat(document.getElementById('priceYi').value) || 0;
         const amount = parseFloat(document.getElementById('amountA').value) || 0;
         const total = priceYi * 100000000 * amount;
         
-        document.getElementById('totalSeedA').innerText = total.toLocaleString();
+        document.getElementById('totalSeedA').innerText = formatChineseSeed(total);
         const twd = total / 20000000;
         const om = twd * 5;
         
@@ -144,17 +185,18 @@
         document.getElementById('resTWDA').innerText = (twd % 1 === 0 ? twd.toLocaleString() : twd.toFixed(1).toLocaleString()) + " 元";
     }
 
-    // 模式 B（反推功能）
+    // 模式 B
     function calcB() {
         const totalOM = parseFloat(document.getElementById('totalOMInput').value) || 0;
         const amount = parseFloat(document.getElementById('amountB').value) || 0;
         
         if (amount <= 0 || totalOM <= 0) {
             document.getElementById('unitOMB').innerText = "0";
-            document.getElementById('unitSeedB').innerText = "0 億";
+            document.getElementById('unitSeedB').innerText = "0";
             document.getElementById('unitTWDB').innerText = "0 元";
             document.getElementById('totalTWDB').innerText = "0 元";
             document.getElementById('totalSeedB').innerText = "0";
+            rawTotalSeedB = 0;
             return;
         }
 
@@ -165,13 +207,17 @@
         const unitTWD = totalTWD / amount;
         // 3. SEED 換算 (1 TWD = 20,000,000 SEED)
         const totalSeed = totalTWD * 20000000;
-        const unitSeedYi = (totalSeed / amount) / 100000000; // 轉成億
+        const unitSeed = totalSeed / amount;
+
+        rawTotalSeedB = Math.round(totalSeed);
 
         document.getElementById('unitOMB').innerText = (unitOM % 1 === 0 ? unitOM.toLocaleString() : unitOM.toFixed(2).toLocaleString());
-        document.getElementById('unitSeedB').innerText = (unitSeedYi >= 0.01 ? unitSeedYi.toFixed(3) : unitSeedYi.toFixed(4)) + " 億";
+        document.getElementById('unitSeedB').innerText = formatChineseSeed(unitSeed);
         document.getElementById('unitTWDB').innerText = (unitTWD % 1 === 0 ? unitTWD.toLocaleString() : unitTWD.toFixed(1).toLocaleString()) + " 元";
         document.getElementById('totalTWDB').innerText = (totalTWD % 1 === 0 ? totalTWD.toLocaleString() : totalTWD.toFixed(1).toLocaleString()) + " 元";
-        document.getElementById('totalSeedB').innerText = totalSeed.toLocaleString();
+        
+        // 顯示轉換後的「48 億」或「39 億 8 千萬」
+        document.getElementById('totalSeedB').innerText = formatChineseSeed(totalSeed);
     }
 
     function copyNum(id, name) {
@@ -182,6 +228,18 @@
         }
         navigator.clipboard.writeText(text).then(() => {
             alert('已成功複製 ' + name + ': ' + text);
+        }).catch(() => {
+            alert('複製失敗，請手動複製。');
+        });
+    }
+
+    function copyRawSeed() {
+        if (!rawTotalSeedB || rawTotalSeedB === 0) {
+            alert('目前金額為 0！');
+            return;
+        }
+        navigator.clipboard.writeText(rawTotalSeedB.toString()).then(() => {
+            alert('已複製 SEED 精確數字: ' + rawTotalSeedB.toLocaleString());
         }).catch(() => {
             alert('複製失敗，請手動複製。');
         });
